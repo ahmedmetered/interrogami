@@ -2,7 +2,7 @@ const used = new Set<string>();
 export function pick(lines: string[]): string {
   const fresh = lines.filter((l) => !used.has(l));
   const pool = fresh.length ? fresh : lines;
-  const l = pool[Math.floor(Math.random() * pool.length)];
+  const l = pool[Math.floor(Math.random() * pool.length)] ?? lines[0] ?? "";
   used.add(l);
   return l;
 }

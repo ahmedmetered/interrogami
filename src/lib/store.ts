@@ -87,7 +87,7 @@ export function isUnlocked(s: AppState, c: Course, levelId: string) {
   const all = flatLevels(c);
   const i = all.findIndex((l) => l.id === levelId);
   if (i <= 0) return true;
-  const prev = s.results[all[i - 1].id];
+  const prev = s.results[all[i - 1]!.id];
   return !!prev && prev.grade !== null;
 }
 
@@ -118,7 +118,7 @@ export function recordLevel(levelId: string, grade: number | null, lode: boolean
       ...s,
       xp: nxp,
       owned: [...owned],
-      equipped: newHats.length ? newHats[newHats.length - 1] : s.equipped,
+      equipped: newHats[newHats.length - 1] ?? s.equipped,
       hadLode,
       streak,
       lastDay: today,

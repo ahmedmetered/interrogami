@@ -3,7 +3,7 @@ import { streamText } from "ai";
 
 /** Streams a Responses call and returns the final text. Server-only. */
 export async function askModel(instructions: string, prompt: string): Promise<string> {
-  const apiKey = process.env.LOVABLE_API_KEY;
+  const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("AI is not configured.");
   let runId: string | undefined;
   const provider = createOpenAI({
@@ -25,7 +25,7 @@ export async function askModel(instructions: string, prompt: string): Promise<st
     },
   });
   const result = streamText({
-    model: provider.responses("openai/gpt-6-astra"),
+    model: provider.responses("openai/gpt-6-astra") as unknown as Parameters<typeof streamText>[0]["model"],
     instructions,
     prompt,
     providerOptions: {
