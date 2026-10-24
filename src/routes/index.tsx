@@ -1,14 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { Lock, Plus, Star } from "lucide-react";
+import { Check, Lock, Plus, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ChunkyButton, Professor } from "@/components/game";
+import { Avatar, ChunkyButton, Professor, SESSION_ICONS } from "@/components/game";
 import { TopBar } from "@/components/TopBar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { generateCourse } from "@/lib/ai.functions";
 import type { Course } from "@/lib/seed";
-import { SESSIONS, SHORT, zoneForLevel } from "@/lib/sessions";
+import { SESSIONS, SHORT, type Session } from "@/lib/sessions";
 import { flatLevels, isUnlocked, setState, useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -31,8 +31,10 @@ function MapPage() {
   const [open, setOpen] = useState(false);
   return (
     <div className="min-h-screen">
+      <SeasonBackdrop session={s.currentSession} />
       <TopBar />
-      <main className="mx-auto max-w-2xl px-4 pb-24 pt-6">
+      <TimelineStrip />
+      <main className="relative mx-auto max-w-2xl px-4 pb-24 pt-6">
         <div className="mb-6 flex items-center gap-4 rounded-2xl border-2 border-border bg-card p-4">
           <Professor mood="neutral" size={84} />
           <div>
@@ -45,7 +47,6 @@ function MapPage() {
           <ChunkyButton tone="accent" onClick={() => setOpen(true)}><Plus className="h-5 w-5" />Add subject</ChunkyButton>
         </div>
       </main>
-      <SessionShift />
       <AddSubject open={open} onOpenChange={setOpen} />
     </div>
   );
@@ -68,107 +69,140 @@ function Particles({ zone }: { zone: number }) {
   );
 }
 
-function CourseMap({ course }: { course: Course }) {
-  const s = useApp();
-  const all = course.chapters.flatMap((ch, ci) => ch.levels.map((l) => ({ l, ch, ci })));
-  const cur = SESSIONS.indexOf(s.currentSession);
-  const zones = SESSIONS.map((name, z) => ({ name, z, items: all.map((it, i) => ({ ...it, i })).filter((it) => zoneForLevel(course.id, it.i, all.length) === z) }));
-  const seenChapters = new Set<string>();
+/** Whole-map seasonal ambiance driven by the current session only; cross-fades on change. */
+function SeasonBackdrop({ session }: { session: Session }) {
+  const z = SESSIONS.indexOf(session);
   return (
-    <section className="mb-10">
-      <h2 className="mb-4 text-3xl font-extrabold">{course.title}</h2>
-      <div className="flex flex-col gap-3">
-        {zones.map(({ name, z, items }) => (
-          <motion.div key={name} layout
-            animate={{ opacity: z > cur ? 0.6 : 1, scale: z === cur ? 1 : 0.98 }}
-            transition={{ duration: 0.8 }}
-            className={cn("relative overflow-hidden rounded-3xl border-2 px-4 pb-6 pt-4", ZONE_CLASS[z], z === cur ? "border-primary" : "border-transparent")}>
-            <Particles zone={z} />
-            <div className="relative mb-3 flex items-center justify-between">
-              <span className="rounded-full bg-card/80 px-4 py-1 font-display font-bold">{name} Appello</span>
-              {z === cur && <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase text-primary-foreground">You are here</span>}
-            </div>
-            <div className="relative flex flex-col items-center gap-6">
-              {items.length === 0 && <p className="text-sm font-semibold text-muted-foreground">No exams this session. Enjoy the break.</p>}
-              {items.map(({ l, ch, ci, i }) => {
-                const header = !seenChapters.has(ch.id);
-                seenChapters.add(ch.id);
-                const offset = Math.sin(i * 1.3) * 80;
-                const r = s.results[l.id];
-                const unlocked = isUnlocked(s, course, l.id);
-                const done = !!r && r.grade !== null;
-                const failed = !!r && r.grade === null;
-                const lode = !!r?.lode;
-                const node = (
-                  <motion.div whileHover={unlocked ? { scale: 1.06 } : {}}
-                    className={cn("chunky relative flex h-20 w-20 items-center justify-center rounded-full font-display text-2xl font-extrabold",
-                      lode ? "bg-gold text-gold-foreground [--chunk:var(--gold-deep)]"
-                        : done ? "bg-primary text-primary-foreground [--chunk:var(--primary-deep)]"
-                        : unlocked ? "bg-card text-primary-deep border-4 border-primary [--chunk:var(--primary-deep)]"
-                        : "bg-muted text-muted-foreground [--chunk:var(--border)]")}>
-                    {lode ? "30L" : done ? r.grade : unlocked ? <Star className="h-8 w-8 fill-current" /> : <Lock className="h-7 w-7" />}
-                    {failed && !done && (
-                      <span className="absolute -rotate-12 rounded-md border-2 border-destructive bg-card px-1 text-[10px] font-extrabold text-destructive">BOCCIATO</span>
-                    )}
-                    {done && r.session && (
-                      <span className="absolute -bottom-1 -right-2 rounded-full bg-card px-1.5 text-[10px] font-bold text-foreground shadow">{SHORT[r.session]}</span>
-                    )}
-                  </motion.div>
-                );
-                return (
-                  <div key={l.id} className="flex w-full flex-col items-center gap-3">
-                    {header && (
-                      <div className={cn("w-full rounded-2xl px-5 py-2 font-display text-lg font-bold", ci % 2 ? "bg-accent text-accent-foreground" : "bg-primary text-primary-foreground")}>
-                        Chapter {ci + 1} · {ch.title}
-                      </div>
-                    )}
-                    <div style={{ transform: `translateX(${offset}px)` }} className="flex flex-col items-center gap-1">
-                      {unlocked ? <Link to="/quiz/$levelId" params={{ levelId: l.id }} aria-label={l.title}>{node}</Link> : node}
-                      <span className="max-w-36 rounded-full bg-card/70 px-2 text-center text-sm font-bold">{l.title}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-      <p className="mt-3 text-center text-xs text-muted-foreground">{flatLevels(course).filter((l) => s.results[l.id]?.grade != null).length}/{flatLevels(course).length} levels passed</p>
-    </section>
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>
+      <AnimatePresence>
+        <motion.div key={session} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }}
+          className={cn("absolute inset-0", ZONE_CLASS[z])}>
+          <Particles zone={z} />
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 }
 
-function SessionShift() {
+/** Sticky academic-year timeline: the single source of truth for the current session. */
+function TimelineStrip() {
   const s = useApp();
+  const cur = SESSIONS.indexOf(s.currentSession);
   const [from, setFrom] = useState<number | null>(null);
   useEffect(() => {
     const seen = sessionStorage.getItem("interrogami:seen-session");
-    const now = s.currentSession;
-    if (seen && seen !== now) setFrom(SESSIONS.indexOf(seen as (typeof SESSIONS)[number]));
-    sessionStorage.setItem("interrogami:seen-session", now);
-  }, [s.currentSession]);
+    if (seen && seen !== s.currentSession) {
+      const i = SESSIONS.indexOf(seen as Session);
+      if (i >= 0 && i < cur) setFrom(i);
+    }
+    const t = setTimeout(() => sessionStorage.setItem("interrogami:seen-session", s.currentSession), 2600);
+    return () => clearTimeout(t);
+  }, [s.currentSession, cur]);
   useEffect(() => {
     if (from === null) return;
     const t = setTimeout(() => setFrom(null), 2600);
     return () => clearTimeout(t);
   }, [from]);
-  const to = SESSIONS.indexOf(s.currentSession);
   return (
-    <AnimatePresence>
-      {from !== null && from >= 0 && (
-        <motion.div key="shift" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden" onClick={() => setFrom(null)}>
-          <div className={cn("absolute inset-0", ZONE_CLASS[from])}><Particles zone={from} /></div>
-          <motion.div initial={{ clipPath: "circle(0% at 50% 50%)" }} animate={{ clipPath: "circle(150% at 50% 50%)" }} transition={{ duration: 1.4, delay: 0.4, ease: "easeInOut" }}
-            className={cn("absolute inset-0", ZONE_CLASS[to])}><Particles zone={to} /></motion.div>
-          <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.9 }} className="relative flex flex-col items-center gap-2 rounded-3xl bg-card/90 p-6 text-center">
-            <Professor mood="disappointed" size={110} />
-            <p className="font-display text-3xl font-extrabold">{s.currentSession} Appello</p>
-            <p className="text-muted-foreground">Time moves on. The exam waits.</p>
+    <div className="sticky top-[62px] z-10 border-b-2 border-border bg-background/90 backdrop-blur">
+      <div className="mx-auto max-w-2xl px-4 pb-2 pt-1">
+        <p className="text-center text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Academic year</p>
+        <div className="relative mt-5">
+          <div className="absolute left-[10%] right-[10%] top-6 h-0.5 bg-border" aria-hidden />
+          <motion.div
+            key={from === null ? "still" : "sliding"}
+            initial={{ left: `${((from ?? cur) + 0.5) * 20}%` }}
+            animate={{ left: `${(cur + 0.5) * 20}%` }}
+            transition={{ duration: 1.4, ease: "easeInOut", delay: 0.5 }}
+            className="absolute -top-5 z-10"
+            style={{ x: "-50%" }}
+          >
+            <Avatar hat={s.equipped} size={30} />
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          <div className="grid grid-cols-5">
+            {SESSIONS.map((name, i) => {
+              const Icon = SESSION_ICONS[i]!;
+              const past = i < cur;
+              const current = i === cur;
+              return (
+                <div key={name} className="flex flex-col items-center gap-1">
+                  <div className={cn("flex h-12 items-center justify-center")}>
+                    <div className={cn("flex items-center justify-center rounded-full border-2",
+                      current ? "h-12 w-12 border-primary bg-card text-primary-deep ring-4 ring-primary/30"
+                        : past ? "h-9 w-9 border-muted bg-muted text-muted-foreground"
+                        : "h-9 w-9 border-border bg-card/60 text-muted-foreground opacity-50")}>
+                      {past ? <Check className="h-5 w-5" /> : <Icon className={current ? "h-6 w-6" : "h-5 w-5"} />}
+                    </div>
+                  </div>
+                  <span className={cn("text-xs font-bold", current ? "text-foreground" : "text-muted-foreground", !current && !past && "opacity-60")}>
+                    {SHORT[name]}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CourseMap({ course }: { course: Course }) {
+  const s = useApp();
+  const items = course.chapters.flatMap((ch, ci) => ch.levels.map((l) => ({ l, ch, ci })));
+  const currentId = items.find(({ l }) => isUnlocked(s, course, l.id) && s.results[l.id]?.grade == null)?.l.id;
+  const seenChapters = new Set<string>();
+  return (
+    <section className="mb-10">
+      <h2 className="mb-4 text-3xl font-extrabold">{course.title}</h2>
+      <div className="relative overflow-hidden rounded-3xl border-2 border-border bg-card/75 px-4 pb-6 pt-4 backdrop-blur-sm">
+        <div className="relative flex flex-col items-center gap-6 pt-4">
+          {items.map(({ l, ch, ci }, i) => {
+            const header = !seenChapters.has(ch.id);
+            seenChapters.add(ch.id);
+            const offset = Math.sin(i * 1.3) * 80;
+            const r = s.results[l.id];
+            const unlocked = isUnlocked(s, course, l.id);
+            const done = !!r && r.grade !== null;
+            const failed = !!r && r.grade === null;
+            const lode = !!r?.lode;
+            const node = (
+              <motion.div whileHover={unlocked ? { scale: 1.06 } : {}}
+                className={cn("chunky relative flex h-20 w-20 items-center justify-center rounded-full font-display text-2xl font-extrabold",
+                  lode ? "bg-gold text-gold-foreground [--chunk:var(--gold-deep)]"
+                    : done ? "bg-primary text-primary-foreground [--chunk:var(--primary-deep)]"
+                    : unlocked ? "bg-card text-primary-deep border-4 border-primary [--chunk:var(--primary-deep)]"
+                    : "bg-muted text-muted-foreground [--chunk:var(--border)]")}>
+                {lode ? "30L" : done ? r.grade : unlocked ? <Star className="h-8 w-8 fill-current" /> : <Lock className="h-7 w-7" />}
+                {failed && !done && (
+                  <span className="absolute -rotate-12 rounded-md border-2 border-destructive bg-card px-1 text-[10px] font-extrabold text-destructive">BOCCIATO</span>
+                )}
+                {done && r.session && (
+                  <span className="absolute -bottom-1 -right-2 rounded-full bg-card px-1.5 text-[10px] font-bold text-foreground shadow">{SHORT[r.session]}</span>
+                )}
+              </motion.div>
+            );
+            return (
+              <div key={l.id} className="flex w-full flex-col items-center gap-3">
+                {header && (
+                  <div className={cn("w-full rounded-2xl px-5 py-2 font-display text-lg font-bold", ci % 2 ? "bg-accent text-accent-foreground" : "bg-primary text-primary-foreground")}>
+                    Chapter {ci + 1} · {ch.title}
+                  </div>
+                )}
+                <div style={{ transform: `translateX(${offset}px)` }} className="relative flex flex-col items-center gap-1">
+                  {l.id === currentId && (
+                    <span className="absolute -top-6 z-10 whitespace-nowrap rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase text-primary-foreground">You are here</span>
+                  )}
+                  {unlocked ? <Link to="/quiz/$levelId" params={{ levelId: l.id }} aria-label={l.title}>{node}</Link> : node}
+                  <span className="max-w-36 rounded-full bg-card/70 px-2 text-center text-sm font-bold">{l.title}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <p className="mt-3 text-center text-xs text-muted-foreground">{flatLevels(course).filter((l) => s.results[l.id]?.grade != null).length}/{flatLevels(course).length} levels passed</p>
+    </section>
   );
 }
 
