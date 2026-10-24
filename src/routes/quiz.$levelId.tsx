@@ -7,6 +7,7 @@ import { Avatar, ChunkyButton, Hat, moodFor, Professor, type Mood } from "@/comp
 import { gradeAnswer, type GradeResult } from "@/lib/ai.functions";
 import { HATS, levelOutcome, scoreToGrade, shouldFollowup, type HatId, type LevelOutcome } from "@/lib/grading";
 import { FAIL_LINES, INTRO_LINES, LODE_LINES, PASS_LINES, markUsed, pick, usedList } from "@/lib/quips";
+import { SESSION_QUIPS } from "@/lib/sessions";
 import { findLevel, nextLevelId, recordLevel, useApp } from "@/lib/store";
 import { setMuted, speak, useSpeechRecognition } from "@/lib/voice";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,7 @@ function Quiz() {
   const [typing, setTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mute, setMute] = useState(false);
-  const [done, setDone] = useState<{ out: LevelOutcome; hats: HatId[]; line: string } | null>(null);
+  const [done, setDone] = useState<{ out: LevelOutcome; hats: HatId[]; line: string; flex: boolean } | null>(null);
   const intro = useRef(pick(INTRO_LINES));
 
   const onFail = useCallback(() => setTyping(true), []);
@@ -106,9 +107,12 @@ function Quiz() {
       setQi(qi + 1);
     } else {
       const out = levelOutcome(newScores, anyFollowup || !!followupQ);
-      const hats = recordLevel(levelId, out.grade, out.lode, out.xp);
-      const line = pick(out.lode ? LODE_LINES : out.passed ? PASS_LINES : FAIL_LINES);
-      setDone({ out, hats, line });
+      const { newHats: hats, flex, session } = recordLevel(levelId, out.grade, out.lode, out.xp);
+      const line = flex
+        ? "An entire degree, in January. I'm telling everyone."
+        : pick(out.lode ? LODE_LINES : out.passed ? PASS_LINES : session === "September" && false ? FAIL_LINES : SESSION_QUIPS[session].concat(FAIL_LINES.slice(0, 0)));
+      setDone({ out, hats, line, flex });
+      if (flex) setTimeout(() => confetti({ particleCount: 200, spread: 120, origin: { y: 0.3 }, colors: ["#FFD700", "#58CC02", "#FF6B6B"] }), 900);
       speak(`${line} ${out.lode ? "" : out.grade === null ? "Bocciato." : `${out.grade} out of 30.`}`);
       if (out.lode) {
         const end = Date.now() + 2500;
@@ -202,13 +206,19 @@ function Quiz() {
   );
 }
 
-function Results({ levelId, out, hats, line }: { levelId: string; out: LevelOutcome; hats: HatId[]; line: string }) {
+function Results({ levelId, out, hats, line, flex }: { levelId: string; out: LevelOutcome; hats: HatId[]; line: string; flex: boolean }) {
   const s = useApp();
   const nav = useNavigate();
   const nextId = out.passed ? nextLevelId(s, levelId) : null;
   return (
     <div className={cn("flex min-h-screen flex-col items-center justify-center gap-6 px-4 py-10 text-center", out.lode && "bg-gold")}>
-      <Professor mood={moodFor(out.grade, out.lode)} size={190} />
+      {flex && (
+        <motion.div initial={{ scale: 0, rotate: -10 }} animate={{ scale: 1, rotate: -2 }} transition={{ type: "spring", delay: 0.8 }}
+          className="chunky rounded-2xl bg-gold px-6 py-3 font-display text-3xl font-extrabold text-gold-foreground [--chunk:var(--gold-deep)]">
+          PROMOSSO IN PRIMA SESSIONE!
+        </motion.div>
+      )}
+      <Professor mood={flex ? "delighted" : moodFor(out.grade, out.lode)} size={190} />
       <motion.div
         initial={{ scale: 4, rotate: -25, opacity: 0 }}
         animate={{ scale: 1, rotate: -8, opacity: 1 }}
