@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Flame, Shirt, Star } from "lucide-react";
+import { CalendarDays, Flame, Shirt, Star } from "lucide-react";
 import { Avatar } from "./game";
 import { useApp } from "@/lib/store";
 
@@ -13,6 +13,7 @@ export function TopBar() {
           <span className="font-display text-2xl font-extrabold text-primary-deep">Interrogami</span>
         </Link>
         <div className="flex items-center gap-4 font-display text-lg font-bold">
+          <span className="flex items-center gap-1 rounded-full bg-secondary px-3 py-0.5 text-sm text-secondary-foreground" title="Current exam session"><CalendarDays className="h-4 w-4" />{s.currentSession}</span>
           <span className="flex items-center gap-1 text-accent" title="Streak"><Flame className="h-5 w-5 fill-current" />{s.streak}</span>
           <span className="flex items-center gap-1 text-gold-deep" title="XP"><Star className="h-5 w-5 fill-current" />{s.xp}</span>
           <Link to="/wardrobe" aria-label="Wardrobe" className="text-muted-foreground hover:text-foreground"><Shirt className="h-6 w-6" /></Link>

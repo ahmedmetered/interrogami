@@ -12,3 +12,4 @@
 - Grading/XP/hat rules live only in src/lib/grading.ts (pure, tested in src/test/grading.test.ts) so the deterministic Italian mapping has one source of truth.
 - All app state persists client-side in one localStorage key via src/lib/store.ts; there is no login or database by design.
 - AI calls (grading, course generation) go through server functions in src/lib/ai.functions.ts so the gateway key stays server-side.
+- Exam-session (appello) rules and level-to-zone placement live in src/lib/sessions.ts (tested in src/test/sessions.test.ts); session advance on fail happens only in recordLevel in store.ts.

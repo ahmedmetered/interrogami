@@ -1,12 +1,14 @@
 import { useSyncExternalStore } from "react";
 import { SEED_COURSE, type Course } from "./seed";
 import { hatsForXp, type HatId } from "./grading";
+import { nextSession, type Session } from "./sessions";
 
 const KEY = "interrogami:v1";
 
 export interface LevelResult {
   grade: number | null;
   lode: boolean;
+  session?: Session;
 }
 export interface AppState {
   courses: Course[];
@@ -17,6 +19,8 @@ export interface AppState {
   hadLode: boolean;
   streak: number;
   lastDay: string | null;
+  currentSession: Session;
+  januaryFlex: string[]; // course ids already celebrated
 }
 
 const initial = (): AppState => ({
@@ -28,6 +32,8 @@ const initial = (): AppState => ({
   hadLode: false,
   streak: 0,
   lastDay: null,
+  currentSession: "January",
+  januaryFlex: [],
 });
 
 let state: AppState = initial();
@@ -100,8 +106,8 @@ export function nextLevelId(s: AppState, levelId: string): string | null {
 }
 
 export function recordLevel(levelId: string, grade: number | null, lode: boolean, xp: number) {
-  const before = getState();
   const newHats: HatId[] = [];
+  let flex = false;
   setState((s) => {
     const prev = s.results[levelId];
     const better =
@@ -114,17 +120,29 @@ export function recordLevel(levelId: string, grade: number | null, lode: boolean
     const today = new Date().toISOString().slice(0, 10);
     const yest = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     const streak = s.lastDay === today ? s.streak : s.lastDay === yest ? s.streak + 1 : 1;
+    const session = s.currentSession;
+    const results = better
+      ? { ...s.results, [levelId]: { grade, lode: lode || !!prev?.lode, ...(grade !== null ? { session } : prev?.session ? { session: prev.session } : {}) } }
+      : s.results;
+    const course = findLevel(s, levelId)?.course;
+    let januaryFlex = s.januaryFlex;
+    if (course && session === "January" && grade !== null && !januaryFlex.includes(course.id)
+      && flatLevels(course).every((l) => results[l.id]?.grade != null)) {
+      flex = true;
+      januaryFlex = [...januaryFlex, course.id];
+    }
     return {
       ...s,
+      currentSession: grade === null ? nextSession(session) : session,
+      januaryFlex,
       xp: nxp,
       owned: [...owned],
       equipped: newHats[newHats.length - 1] ?? s.equipped,
       hadLode,
       streak,
       lastDay: today,
-      results: better ? { ...s.results, [levelId]: { grade, lode: lode || !!prev?.lode } } : s.results,
+      results,
     };
   });
-  void before;
-  return newHats;
+  return { newHats, flex, session: getState().currentSession };
 }
