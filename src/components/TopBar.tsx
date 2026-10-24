@@ -1,10 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, Flame, Shirt, Star } from "lucide-react";
+import { CalendarDays, Flame, GraduationCap, Shirt, Star } from "lucide-react";
 import { Avatar } from "./game";
 import { useApp } from "@/lib/store";
 
 export function TopBar() {
   const s = useApp();
+  const grades = Object.values(s.results)
+    .map((r) => r.grade)
+    .filter((g): g is number => g != null);
+  const avgGrade = grades.length
+    ? Math.round(grades.reduce((a, b) => a + b, 0) / grades.length)
+    : null;
   return (
     <header className="sticky top-0 z-20 border-b-2 border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-2">
@@ -15,7 +21,8 @@ export function TopBar() {
         <div className="flex items-center gap-4 font-display text-lg font-bold">
           <span className="flex items-center gap-1 rounded-full bg-secondary px-3 py-0.5 text-sm text-secondary-foreground" title="Current exam session"><CalendarDays className="h-4 w-4" />{s.currentSession}</span>
           <span className="flex items-center gap-1 text-accent" title="Streak"><Flame className="h-5 w-5 fill-current" />{s.streak}</span>
-          <span className="flex items-center gap-1 text-gold-deep" title="XP"><Star className="h-5 w-5 fill-current" />{s.xp}</span>
+<span className="flex items-center gap-1 text-gold-deep" title="XP"><Star className="h-5 w-5 fill-current" />{s.xp}</span>
+          <span className="flex items-center gap-1 text-primary-deep" title="Average grade"><GraduationCap className="h-5 w-5" />{avgGrade ?? "—"}</span>
           <Link to="/wardrobe" aria-label="Wardrobe" className="text-muted-foreground hover:text-foreground"><Shirt className="h-6 w-6" /></Link>
         </div>
       </div>
