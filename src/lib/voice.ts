@@ -33,6 +33,7 @@ export function useSpeechRecognition(onFail: () => void) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [micError, setMicError] = useState<string | null>(null);
   const recRef = useRef<Rec | null>(null);
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export function useSpeechRecognition(onFail: () => void) {
     r.continuous = false;
     r.interimResults = true;
     setTranscript("");
+    setMicError(null);
     r.onresult = (e) => {
       let t = "";
       for (let i = 0; i < e.results.length; i++) t += e.results[i]?.[0]?.transcript ?? "";
@@ -57,7 +59,9 @@ export function useSpeechRecognition(onFail: () => void) {
     };
     r.onerror = (e) => {
       setListening(false);
-      if (e.error === "not-allowed" || e.error === "no-speech" || e.error === "service-not-allowed" || e.error === "network") onFail();
+      console.warn("Speech recognition error:", e.error);
+      setMicError(MIC_ERRORS[e.error] ?? `Mic error: ${e.error}`);
+      if (e.error === "not-allowed" || e.error === "no-speech" || e.error === "service-not-allowed" || e.error === "network" || e.error === "audio-capture") onFail();
     };
     r.onend = () => setListening(false);
     recRef.current = r;
@@ -70,5 +74,14 @@ export function useSpeechRecognition(onFail: () => void) {
   }, [onFail]);
 
   const stop = useCallback(() => recRef.current?.stop(), []);
-  return { supported, listening, transcript, setTranscript, start, stop };
+  return { micError, supported, listening, transcript, setTranscript, start, stop };
 }
+
+const MIC_ERRORS: Record<string, string> = {
+  "not-allowed": "Microphone permission was blocked. Allow the mic in your browser, or open the app in its own tab.",
+  "service-not-allowed": "This browser doesn't allow voice recognition here. Try Chrome in its own tab.",
+  network: "Voice recognition needs an internet connection to Google's speech service, and it couldn't reach it.",
+  "audio-capture": "No microphone was found. Check your laptop's mic settings.",
+  "no-speech": "I didn't hear anything. Speak a bit louder or closer to the mic.",
+  aborted: "Listening was interrupted. Tap the mic to try again.",
+};
