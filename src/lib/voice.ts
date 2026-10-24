@@ -24,6 +24,7 @@ type Rec = {
   interimResults: boolean;
   start(): void;
   stop(): void;
+  abort(): void;
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
   onend: (() => void) | null;
@@ -35,45 +36,94 @@ export function useSpeechRecognition(onFail: () => void) {
   const [transcript, setTranscript] = useState("");
   const [micError, setMicError] = useState<string | null>(null);
   const recRef = useRef<Rec | null>(null);
+  const keepListening = useRef(false);
+  const restartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const failRef = useRef(onFail);
+  failRef.current = onFail;
 
   useEffect(() => {
     const w = window as unknown as { SpeechRecognition?: new () => Rec; webkitSpeechRecognition?: new () => Rec };
     setSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
+    return () => {
+      keepListening.current = false;
+      if (restartTimer.current !== null) clearTimeout(restartTimer.current);
+      const r = recRef.current;
+      recRef.current = null;
+      if (r) {
+        r.onresult = null;
+        r.onerror = null;
+        r.onend = null;
+        r.abort();
+      }
+    };
   }, []);
 
   const start = useCallback(() => {
+    if (keepListening.current) return;
     const w = window as unknown as { SpeechRecognition?: new () => Rec; webkitSpeechRecognition?: new () => Rec };
     const C = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!C) return onFail();
+    if (!C) return failRef.current();
     window.speechSynthesis?.cancel();
-    const r = new C();
-    r.lang = "en-US";
-    r.continuous = false;
-    r.interimResults = true;
+    keepListening.current = true;
     setTranscript("");
     setMicError(null);
-    r.onresult = (e) => {
-      let t = "";
-      for (let i = 0; i < e.results.length; i++) t += e.results[i]?.[0]?.transcript ?? "";
-      setTranscript(t);
+    let previous = "";
+    const begin = () => {
+      restartTimer.current = null;
+      if (!keepListening.current) return;
+      const r = new C();
+      let current = "";
+      r.lang = "en-US";
+      r.continuous = true;
+      r.interimResults = true;
+      r.onresult = (e) => {
+        if (recRef.current !== r) return;
+        current = Array.from(e.results, (result) => result[0]?.transcript ?? "").join(" ").trim();
+        setTranscript([previous, current].filter(Boolean).join(" "));
+      };
+      r.onerror = (e) => {
+        if (recRef.current !== r || !keepListening.current) return;
+        if (e.error === "no-speech") return;
+        keepListening.current = false;
+        setListening(false);
+        console.warn("Speech recognition error:", e.error);
+        setMicError(MIC_ERRORS[e.error] ?? `Mic error: ${e.error}`);
+        failRef.current();
+      };
+      r.onend = () => {
+        if (recRef.current !== r) return;
+        previous = [previous, current].filter(Boolean).join(" ");
+        recRef.current = null;
+        if (keepListening.current) {
+          restartTimer.current = setTimeout(begin, 250);
+        } else {
+          setListening(false);
+        }
+      };
+      recRef.current = r;
+      try {
+        r.start();
+        setListening(true);
+      } catch {
+        keepListening.current = false;
+        recRef.current = null;
+        setListening(false);
+        setMicError("Voice recognition couldn't start. Tap the mic to try again, or type your answer.");
+        failRef.current();
+      }
     };
-    r.onerror = (e) => {
-      setListening(false);
-      console.warn("Speech recognition error:", e.error);
-      setMicError(MIC_ERRORS[e.error] ?? `Mic error: ${e.error}`);
-      if (e.error === "not-allowed" || e.error === "no-speech" || e.error === "service-not-allowed" || e.error === "network" || e.error === "audio-capture") onFail();
-    };
-    r.onend = () => setListening(false);
-    recRef.current = r;
-    try {
-      r.start();
-      setListening(true);
-    } catch {
-      onFail();
-    }
-  }, [onFail]);
+    begin();
+  }, []);
 
-  const stop = useCallback(() => recRef.current?.stop(), []);
+  const stop = useCallback(() => {
+    keepListening.current = false;
+    if (restartTimer.current !== null) {
+      clearTimeout(restartTimer.current);
+      restartTimer.current = null;
+    }
+    if (recRef.current) recRef.current.stop();
+    else setListening(false);
+  }, []);
   return { micError, supported, listening, transcript, setTranscript, start, stop };
 }
 

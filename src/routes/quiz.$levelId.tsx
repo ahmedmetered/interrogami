@@ -51,6 +51,10 @@ function Quiz() {
   const onFail = useCallback(() => setTyping(true), []);
   const stt = useSpeechRecognition(onFail);
 
+  useEffect(() => {
+    if (typing && stt.micError) setTyped(stt.transcript);
+  }, [typing, stt.micError, stt.transcript]);
+
   const level = found?.level;
   const question = followupQ ? `Dig deeper: ${followupQ}` : level?.questions[qi]?.q ?? "";
 
@@ -197,7 +201,10 @@ function Quiz() {
             )}
             {error && <p className="text-center font-bold text-destructive">{error}</p>}
             {stt.micError && <p className="text-center text-sm font-semibold text-accent-deep">{stt.micError}</p>}
-            <button className="text-sm font-bold text-primary-deep underline" onClick={() => setTyping(!typing)}>
+            <button className="text-sm font-bold text-primary-deep underline" onClick={() => {
+              if (!typing) { stt.stop(); setTyped(stt.transcript); }
+              setTyping(!typing);
+            }}>
               {typing ? (stt.supported ? "Use the mic instead" : "Mic not supported in this browser") : "Mic not working? Type here"}
             </button>
           </motion.div>
