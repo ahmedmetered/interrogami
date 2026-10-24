@@ -19,6 +19,8 @@ export const Route = createFileRoute("/quiz/$levelId")({
       { name: "description", content: "Answer the Professor out loud and get your Italian exam grade." },
       { property: "og:title", content: "The Oral — Interrogami" },
       { property: "og:description", content: "Answer the Professor out loud and get your Italian exam grade." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: QuizPage,

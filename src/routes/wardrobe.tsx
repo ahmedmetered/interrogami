@@ -13,6 +13,8 @@ export const Route = createFileRoute("/wardrobe")({
       { name: "description", content: "Equip the hats you've earned by acing your oral exams." },
       { property: "og:title", content: "Wardrobe — Interrogami" },
       { property: "og:description", content: "Equip the hats you've earned by acing your oral exams." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Wardrobe,
