@@ -7,12 +7,6 @@ export function nextSession(s: Session): Session {
   return SESSIONS[Math.min(i + 1, SESSIONS.length - 1)]!;
 }
 
-/** Zone index (0-4) for the i-th level of a course with n levels. */
-export function zoneForLevel(courseId: string, i: number, n: number): number {
-  if (courseId === "cinema") return [0, 0, 1, 2, 2, 3, 4, 4, 4][i] ?? 4;
-  return Math.min(4, Math.floor((i * 5) / Math.max(1, n)));
-}
-
 export const SESSION_QUIPS: Record<Session, string[]> = {
   January: ["Allora, try again. Still January."],
   February: ["See you in February. Bring an umbrella.", "February, then. The rain suits your answers."],
@@ -20,5 +14,8 @@ export const SESSION_QUIPS: Record<Session, string[]> = {
   July: ["July. I will be sweating, and so will you.", "Luglio! The air conditioning is broken, like your answer."],
   September: ["September it is. I'll be here. Older.", "Settembre. The leaves fall, and so did you."],
 };
+
+/** Failing in September: no more appelli this year. */
+export const LAST_CALL_LINES = ["September is the last call. I hope you like leaves.", "No more appelli this year. I hope you like my office, because you'll see a lot of it."];
 
 export const SHORT: Record<Session, string> = { January: "Jan", February: "Feb", June: "Jun", July: "Jul", September: "Sep" };

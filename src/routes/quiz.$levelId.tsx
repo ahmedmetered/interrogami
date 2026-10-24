@@ -3,12 +3,12 @@ import confetti from "canvas-confetti";
 import { AnimatePresence, motion } from "framer-motion";
 import { Mic, Square, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Avatar, ChunkyButton, Hat, moodFor, Professor, type Mood } from "@/components/game";
+import { Avatar, ChunkyButton, Hat, moodFor, Professor, SESSION_ICONS, type Mood } from "@/components/game";
 import { gradeAnswer, type GradeResult } from "@/lib/ai.functions";
 import { HATS, levelOutcome, scoreToGrade, shouldFollowup, type HatId, type LevelOutcome } from "@/lib/grading";
 import { INTRO_LINES, LODE_LINES, PASS_LINES, markUsed, pick, usedList } from "@/lib/quips";
-import { SESSION_QUIPS } from "@/lib/sessions";
-import { findLevel, nextLevelId, recordLevel, useApp } from "@/lib/store";
+import { LAST_CALL_LINES, SESSION_QUIPS, SESSIONS, type Session } from "@/lib/sessions";
+import { findLevel, getState, nextLevelId, recordLevel, useApp } from "@/lib/store";
 import { setMuted, speak, useSpeechRecognition } from "@/lib/voice";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +47,7 @@ function Quiz() {
   const [typing, setTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mute, setMute] = useState(false);
-  const [done, setDone] = useState<{ out: LevelOutcome; hats: HatId[]; line: string; flex: boolean } | null>(null);
+  const [done, setDone] = useState<{ out: LevelOutcome; hats: HatId[]; line: string; flex: boolean; flip: { from: Session; to: Session } | null } | null>(null);
   const intro = useRef(pick(INTRO_LINES));
 
   const onFail = useCallback(() => setTyping(true), []);
@@ -113,11 +113,14 @@ function Quiz() {
       setQi(qi + 1);
     } else {
       const out = levelOutcome(newScores, anyFollowup || !!followupQ);
+      const prevSession = getState().currentSession;
       const { newHats: hats, flex, session } = recordLevel(levelId, out.grade, out.lode, out.xp);
+      const failed = out.grade === null;
+      const flip = failed && prevSession !== session ? { from: prevSession, to: session } : null;
       const line = flex
         ? "An entire degree, in January. I'm telling everyone."
-        : pick(out.lode ? LODE_LINES : out.passed ? PASS_LINES : SESSION_QUIPS[session]);
-      setDone({ out, hats, line, flex });
+        : pick(out.lode ? LODE_LINES : out.passed ? PASS_LINES : failed && session === "September" ? LAST_CALL_LINES : SESSION_QUIPS[session]);
+      setDone({ out, hats, line, flex, flip });
       if (flex) setTimeout(() => confetti({ particleCount: 200, spread: 120, origin: { y: 0.3 }, colors: ["#FFD700", "#58CC02", "#FF6B6B"] }), 900);
       speak(`${line} ${out.lode ? "" : out.grade === null ? "Bocciato." : `${out.grade} out of 30.`}`);
       if (out.lode) {
@@ -216,12 +219,13 @@ function Quiz() {
   );
 }
 
-function Results({ levelId, out, hats, line, flex }: { levelId: string; out: LevelOutcome; hats: HatId[]; line: string; flex: boolean }) {
+function Results({ levelId, out, hats, line, flex, flip }: { levelId: string; out: LevelOutcome; hats: HatId[]; line: string; flex: boolean; flip: { from: Session; to: Session } | null }) {
   const s = useApp();
   const nav = useNavigate();
   const nextId = out.passed ? nextLevelId(s, levelId) : null;
   return (
     <div className={cn("flex min-h-screen flex-col items-center justify-center gap-6 px-4 py-10 text-center", out.lode && "bg-gold")}>
+      {flip && <CalendarFlip from={flip.from} to={flip.to} />}
       {flex && (
         <motion.div initial={{ scale: 0, rotate: -10 }} animate={{ scale: 1, rotate: -2 }} transition={{ type: "spring", delay: 0.8 }}
           className="chunky rounded-2xl bg-gold px-6 py-3 font-display text-3xl font-extrabold text-gold-foreground [--chunk:var(--gold-deep)]">
@@ -258,5 +262,53 @@ function Results({ levelId, out, hats, line, flex }: { levelId: string; out: Lev
         <ChunkyButton tone="plain" onClick={() => nav({ to: "/" })}>Back to map</ChunkyButton>
       </div>
     </div>
+  );
+}
+
+function CalendarCard({ session }: { session: Session }) {
+  const Icon = SESSION_ICONS[SESSIONS.indexOf(session)] ?? SESSION_ICONS[0];
+  return (
+    <div className="absolute inset-0 overflow-hidden rounded-2xl border-2 border-border bg-card shadow-2xl">
+      <div className="flex h-9 items-center justify-center gap-6 bg-destructive">
+        {[0, 1, 2].map((i) => <span key={i} className="h-3 w-3 rounded-full bg-card" />)}
+      </div>
+      <p className="mt-8 text-center font-display text-4xl font-extrabold uppercase">{session}</p>
+      <p className="text-center text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground">Appello</p>
+      <Icon className="mx-auto mt-6 h-12 w-12 text-muted-foreground" />
+    </div>
+  );
+}
+
+/** Full-screen paper-calendar page flip from the old appello to the new one, after a fail. */
+function CalendarFlip({ from, to }: { from: Session; to: Session }) {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const on = setTimeout(() => setShow(true), 1400); // after the BOCCIATO stamp lands
+    return () => clearTimeout(on);
+  }, []);
+  useEffect(() => {
+    if (!show) return;
+    const off = setTimeout(() => setShow(false), 4200);
+    return () => clearTimeout(off);
+  }, [show]);
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-foreground/50 backdrop-blur-sm" onClick={() => setShow(false)}>
+          <div className="relative h-72 w-60" style={{ perspective: 1200 }}>
+            <CalendarCard session={to} />
+            <motion.div initial={{ rotateX: 0 }} animate={{ rotateX: -180 }} transition={{ duration: 1.1, delay: 0.5, ease: "easeInOut" }}
+              style={{ transformOrigin: "top center", backfaceVisibility: "hidden" }} className="absolute inset-0">
+              <CalendarCard session={from} />
+            </motion.div>
+          </div>
+          <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.7 }}
+            className="rounded-full bg-card px-5 py-2 font-display text-xl font-extrabold">
+            {from} → {to}: time jumps forward
+          </motion.p>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
