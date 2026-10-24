@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Avatar, ChunkyButton, Hat, moodFor, Professor, type Mood } from "@/components/game";
 import { gradeAnswer, type GradeResult } from "@/lib/ai.functions";
 import { HATS, levelOutcome, scoreToGrade, shouldFollowup, type HatId, type LevelOutcome } from "@/lib/grading";
-import { FAIL_LINES, INTRO_LINES, LODE_LINES, PASS_LINES, markUsed, pick, usedList } from "@/lib/quips";
+import { INTRO_LINES, LODE_LINES, PASS_LINES, markUsed, pick, usedList } from "@/lib/quips";
 import { SESSION_QUIPS } from "@/lib/sessions";
 import { findLevel, nextLevelId, recordLevel, useApp } from "@/lib/store";
 import { setMuted, speak, useSpeechRecognition } from "@/lib/voice";
@@ -110,7 +110,7 @@ function Quiz() {
       const { newHats: hats, flex, session } = recordLevel(levelId, out.grade, out.lode, out.xp);
       const line = flex
         ? "An entire degree, in January. I'm telling everyone."
-        : pick(out.lode ? LODE_LINES : out.passed ? PASS_LINES : session === "September" && false ? FAIL_LINES : SESSION_QUIPS[session].concat(FAIL_LINES.slice(0, 0)));
+        : pick(out.lode ? LODE_LINES : out.passed ? PASS_LINES : SESSION_QUIPS[session]);
       setDone({ out, hats, line, flex });
       if (flex) setTimeout(() => confetti({ particleCount: 200, spread: 120, origin: { y: 0.3 }, colors: ["#FFD700", "#58CC02", "#FF6B6B"] }), 900);
       speak(`${line} ${out.lode ? "" : out.grade === null ? "Bocciato." : `${out.grade} out of 30.`}`);
