@@ -20,8 +20,13 @@ export const Route = createFileRoute("/quiz/$levelId")({
       { property: "og:description", content: "Answer the Professor out loud and get your Italian exam grade." },
     ],
   }),
-  component: Quiz,
+  component: QuizPage,
 });
+
+function QuizPage() {
+  const { levelId } = Route.useParams();
+  return <Quiz key={levelId} />;
+}
 
 type Feedback = GradeResult & { followupNext: string | null };
 
@@ -225,7 +230,7 @@ function Results({ levelId, out, hats, line }: { levelId: string; out: LevelOutc
       )}
       <div className="flex w-full max-w-sm flex-col gap-3">
         {nextId ? (
-          <ChunkyButton onClick={() => nav({ to: "/quiz/$levelId", params: { levelId: nextId } }).then(() => location.reload())}>Next level</ChunkyButton>
+          <ChunkyButton onClick={() => nav({ to: "/quiz/$levelId", params: { levelId: nextId } })}>Next level</ChunkyButton>
         ) : !out.passed ? (
           <ChunkyButton tone="accent" onClick={() => location.reload()}>Try again</ChunkyButton>
         ) : null}

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WardrobeRouteImport } from './routes/wardrobe'
+import { Route as QuizLevelIdRouteImport } from './routes/quiz.$levelId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const WardrobeRoute = WardrobeRouteImport.update({
   path: '/wardrobe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuizLevelIdRoute = QuizLevelIdRouteImport.update({
+  id: '/quiz/$levelId',
+  path: '/quiz/$levelId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/wardrobe': typeof WardrobeRoute
+  '/quiz/$levelId': typeof QuizLevelIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/wardrobe': typeof WardrobeRoute
+  '/quiz/$levelId': typeof QuizLevelIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/wardrobe': typeof WardrobeRoute
+  '/quiz/$levelId': typeof QuizLevelIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/wardrobe'
+  fullPaths: '/' | '/wardrobe' | '/quiz/$levelId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/wardrobe'
-  id: '__root__' | '/' | '/wardrobe'
+  to: '/' | '/wardrobe' | '/quiz/$levelId'
+  id: '__root__' | '/' | '/wardrobe' | '/quiz/$levelId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   WardrobeRoute: typeof WardrobeRoute
+  QuizLevelIdRoute: typeof QuizLevelIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WardrobeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quiz/$levelId': {
+      id: '/quiz/$levelId'
+      path: '/quiz/$levelId'
+      fullPath: '/quiz/$levelId'
+      preLoaderRoute: typeof QuizLevelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   WardrobeRoute: WardrobeRoute,
+  QuizLevelIdRoute: QuizLevelIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
