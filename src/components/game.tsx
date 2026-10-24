@@ -1,7 +1,11 @@
 import { motion } from "framer-motion";
+import { CloudRain, Flower2, Leaf, Snowflake, Sun } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { HatId } from "@/lib/grading";
+
+/** Weather glyph per appello, in SESSIONS order: Jan, Feb, Jun, Jul, Sep. */
+export const SESSION_ICONS = [Snowflake, CloudRain, Flower2, Sun, Leaf] as const;
 
 type Tone = "primary" | "accent" | "gold" | "plain";
 const tones: Record<Tone, string> = {
