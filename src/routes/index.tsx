@@ -19,6 +19,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Gamified oral-exam trainer: an Italian professor quizzes you out loud and grades you from 18 to 30 e lode." },
       { property: "og:title", content: "Interrogami — Get grilled. Get good." },
       { property: "og:description", content: "Practice oral exams out loud with a theatrical Italian professor. Aim for 30 e lode." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: MapPage,
