@@ -52,7 +52,7 @@ export function useSpeechRecognition(onFail: () => void) {
     setTranscript("");
     r.onresult = (e) => {
       let t = "";
-      for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+      for (let i = 0; i < e.results.length; i++) t += e.results[i]?.[0]?.transcript ?? "";
       setTranscript(t);
     };
     r.onerror = (e) => {

@@ -67,7 +67,7 @@ function CourseMap({ course }: { course: Course }) {
               const lode = !!r?.lode;
               const node = (
                 <motion.div
-                  whileHover={unlocked ? { scale: 1.06 } : undefined}
+                  whileHover={unlocked ? { scale: 1.06 } : {}}
                   className={cn(
                     "chunky flex h-20 w-20 items-center justify-center rounded-full font-display text-2xl font-extrabold",
                     lode ? "bg-gold text-gold-foreground [--chunk:var(--gold-deep)]"
@@ -114,7 +114,7 @@ function AddSubject({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   async function submit() {
-    if (notes.trim().length < 50) return toast.error("Give me at least a paragraph of notes, per favore.");
+    if (notes.trim().length < 50) { toast.error("Give me at least a paragraph of notes, per favore."); return; }
     setBusy(true);
     try {
       const course = await generateCourse({ data: { notes: notes.slice(0, 60000) } });

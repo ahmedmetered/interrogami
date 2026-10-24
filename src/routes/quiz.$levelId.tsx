@@ -71,6 +71,7 @@ function Quiz() {
     setError(null);
     try {
       const q = level.questions[qi];
+      if (!q) return;
       const r = await gradeAnswer({ data: { question: followupQ ?? q.q, expectedPoints: q.expectedPoints, answer, isFollowup: !!followupQ, usedQuips: usedList() } });
       markUsed(r.quip);
       const fu = !followupQ && shouldFollowup(r.score, answer, r.askFollowup)
@@ -223,7 +224,7 @@ function Results({ levelId, out, hats, line }: { levelId: string; out: LevelOutc
         <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 1 }} className="rounded-2xl border-2 border-border bg-card p-5">
           <p className="font-display text-2xl font-extrabold text-accent">Hat unlocked!</p>
           <div className="flex items-center justify-center gap-4">
-            <Avatar hat={hats[hats.length - 1]} size={110} />
+            <Avatar hat={hats[hats.length - 1] ?? null} size={110} />
             <div className="text-left">{hats.map((h) => <p key={h} className="flex items-center gap-1 font-bold"><svg viewBox="0 0 120 70" width="36" height="22"><Hat id={h} /></svg>{HATS.find((x) => x.id === h)?.name}</p>)}</div>
           </div>
         </motion.div>
