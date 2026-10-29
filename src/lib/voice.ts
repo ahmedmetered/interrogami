@@ -36,9 +36,11 @@ type Rec = {
 export function useSpeechRecognition(onFail: () => void) {
   // Lazy init: resolving this in an effect paints the typing UI first, then
   // swaps to the mic on every quiz load (AUD-2 flash).
-  const [supported] = useState(() =>
-    typeof window !== "undefined" && !!(window.SpeechRecognition || (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition),
-  );
+  const [supported] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+    return !!(w.SpeechRecognition || w.webkitSpeechRecognition);
+  });
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [micError, setMicError] = useState<string | null>(null);
