@@ -9,7 +9,7 @@ import { HATS, levelOutcome, scoreToGrade, shouldFollowup, type HatId, type Leve
 import { INTRO_LINES, LODE_LINES, PASS_LINES, markUsed, pick, usedList } from "@/lib/quips";
 import { LAST_CALL_LINES, SESSION_QUIPS, SESSIONS, type Session } from "@/lib/sessions";
 import { findLevel, getState, nextLevelId, recordLevel, useApp } from "@/lib/store";
-import { setMuted, speak, useSpeechRecognition } from "@/lib/voice";
+import { isMuted, setMuted, speak, useSpeechRecognition } from "@/lib/voice";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/quiz/$levelId")({
@@ -46,7 +46,8 @@ function Quiz() {
   const [typed, setTyped] = useState("");
   const [typing, setTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mute, setMute] = useState(false);
+  const [mute, setMute] = useState(isMuted()); // AUD-1: seed from the module, never desync after a remount
+  const updateMute = (m: boolean) => { setMuted(m); setMute(m); };
   const [done, setDone] = useState<{ out: LevelOutcome; hats: HatId[]; line: string; flex: boolean; flip: { from: Session; to: Session } | null } | null>(null);
   const intro = useRef(pick(INTRO_LINES));
 
@@ -149,7 +150,7 @@ function Quiz() {
             <span key={i} className={cn("h-4 w-4 rounded-full", i < qi || (i === qi && feedback && !feedback.followupNext) ? "bg-primary" : i === qi ? "bg-accent" : "bg-muted")} />
           ))}
         </div>
-        <button aria-label="Toggle voice" onClick={() => { setMuted(!mute); setMute(!mute); }} className="text-muted-foreground">
+        <button aria-label="Toggle voice" onClick={() => updateMute(!mute)} className="text-muted-foreground">
           {mute ? <VolumeX className="h-7 w-7" /> : <Volume2 className="h-7 w-7" />}
         </button>
       </div>

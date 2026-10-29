@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 let muted = false;
+export function isMuted() {
+  return muted;
+}
 export function setMuted(m: boolean) {
   muted = m;
   if (m && typeof window !== "undefined") window.speechSynthesis?.cancel();
@@ -31,7 +34,11 @@ type Rec = {
 };
 
 export function useSpeechRecognition(onFail: () => void) {
-  const [supported, setSupported] = useState(false);
+  // Lazy init: resolving this in an effect paints the typing UI first, then
+  // swaps to the mic on every quiz load (AUD-2 flash).
+  const [supported] = useState(() =>
+    typeof window !== "undefined" && !!(window.SpeechRecognition || (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition),
+  );
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [micError, setMicError] = useState<string | null>(null);
@@ -42,8 +49,6 @@ export function useSpeechRecognition(onFail: () => void) {
   failRef.current = onFail;
 
   useEffect(() => {
-    const w = window as unknown as { SpeechRecognition?: new () => Rec; webkitSpeechRecognition?: new () => Rec };
-    setSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
     return () => {
       keepListening.current = false;
       if (restartTimer.current !== null) clearTimeout(restartTimer.current);

@@ -59,7 +59,11 @@ export function getState() {
 export function setState(fn: (s: AppState) => AppState) {
   load();
   state = fn(state);
-  localStorage.setItem(KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    /* private mode / quota — in-memory state still works, it just won't persist */
+  }
   subs.forEach((f) => f());
 }
 
